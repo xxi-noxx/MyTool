@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace JsonleniumTool.Properties
+namespace JsonleniumEditor.Properties
 {
 
 

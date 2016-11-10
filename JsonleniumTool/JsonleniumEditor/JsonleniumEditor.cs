@@ -1,6 +1,6 @@
 ﻿using CsvHelper;
-using JsonleniumTool.Models;
-using JsonleniumTool.Properties;
+using JsonleniumEditor.Models;
+using JsonleniumEditor.Properties;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -14,17 +14,19 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace JsonleniumTool
+namespace JsonleniumEditor
 {
-	public partial class JsonleniumTool : Form
+	public partial class JsonleniumEditor : Form
 	{
-		public JsonleniumTool()
+		public JsonleniumEditor()
 		{
 			InitializeComponent();
 			if (Settings.Default.UrlDomainList == null)
 				Settings.Default.UrlDomainList = new StringCollection();
 		}
 		private string _readedFilePath { get; set; }
+		private JsonleniumEntity _readedJson { get; set; }
+		private TestInfoEntity _selectedTestInfo { get; set; }
 
 		private void LoadForm(object sender, EventArgs e)
 		{
@@ -33,11 +35,12 @@ namespace JsonleniumTool
 			_jsonFilePath.Text = Settings.Default.LastReadJsonFile;
 		}
 
+
 		private void CreateNewFile(object sender, EventArgs e)
 		{
 			using (var dialog = new SaveFileDialog())
 			{
-				dialog.Filter = "JSONファイル(*.json)|*.json";
+				dialog.Filter = "JSONファイル(*.json)|*.json|すべてのファイル(*.*)|*.*";
 				if (dialog.ShowDialog() == DialogResult.OK)
 				{
 					File.Create(dialog.FileName).Close();
@@ -66,24 +69,50 @@ namespace JsonleniumTool
 		private void ReadJsonFile(object sender, EventArgs e)
 		{
 			_readedFilePath = _jsonFilePath.Text;
-
-			// TODO : JSONからEntity作成
-			var json = JsonConvert.DeserializeObject<JsonleniumEntity>(File.ReadAllText(_readedFilePath, Encoding.GetEncoding(932)));
-			_testCaseData.DataSource = new BindingSource(json?.TestCaseList ?? new List<TestCaseEntity>(), "");
-			_catalystData.DataSource = new BindingSource(json?.CatalystList ?? new List<CatalystEntity>(), "");
-			_metaData.DataSource = new BindingSource(json?.MetaList ?? new List<MetaEntity>(), "");
-			if (json != null)
-			{
-				var uri = new UriBuilder(json.Url);
-				_urlDomain.Text = string.Format("{0}://{1}", uri.Scheme, uri.Host);
-				_url.Text = uri.Path + uri.Query;
-				_isBanki.Checked = json.Banki;
-			}
-			
-			
-			
 			Settings.Default.LastReadJsonFile = _readedFilePath;
 			Settings.Default.Save();
+
+			// TODO : JSONからEntity作成
+			_readedJson = JsonConvert.DeserializeObject<JsonleniumEntity>(File.ReadAllText(_readedFilePath, Encoding.GetEncoding(932))) ?? new JsonleniumEntity();
+			_testInfoList.DataSource = new BindingSource(_readedJson.TestInfoList?.Select(x => x.Name).ToList() ?? new List<string>(), "");
+			//_testInfoList.DisplayMember = nameof(TestInfoEntity.Name);
+			//_testInfoList.ValueMember = nameof(TestInfoEntity.Name);
+		}
+
+		private void AddNewTestInfo(object sender, EventArgs e)
+		{
+			if (string.IsNullOrEmpty(_newTestInfoName.Text)) return;
+			if (_readedJson.TestInfoList.Any(x => x.Name == _newTestInfoName.Text))
+			{
+				_errorProvider.SetError(_newTestInfoName, "存在する名前です。");
+				return;
+			}
+
+			_errorProvider.SetError(_newTestInfoName, "");
+			var addInfo = new TestInfoEntity() { Name = _newTestInfoName.Text };
+			_readedJson.TestInfoList.Add(addInfo);
+			(_testInfoList.DataSource as BindingSource).Add(_newTestInfoName.Text);
+			_testInfoList.SelectedItem = _newTestInfoName.Text;
+			_newTestInfoName.Text = "";
+		}
+
+		private void TestInfoChange(object sender, EventArgs e)
+		{
+			var selectedTestInfo = _readedJson.TestInfoList.Single(x => x.Name == _testInfoList.SelectedItem.ToString());
+			_testCaseData.DataSource = new BindingSource(selectedTestInfo.TestCaseList ?? new List<TestCaseEntity>(), "");
+			_catalystData.DataSource = new BindingSource(selectedTestInfo.CatalystList ?? new List<CatalystEntity>(), "");
+			_metaData.DataSource = new BindingSource(selectedTestInfo.MetaList ?? new List<MetaEntity>(), "");
+			if (selectedTestInfo != null)
+			{
+				if (!string.IsNullOrEmpty(selectedTestInfo.Url))
+				{
+					var uri = new UriBuilder(selectedTestInfo.Url);
+					_urlDomain.Text = string.Format("{0}://{1}", uri.Scheme, uri.Host);
+					_url.Text = uri.Path + uri.Query;
+				}
+				_isBanki.Checked = selectedTestInfo.Banki;
+			}
+			// TODO : selectedTestInfo Set
 		}
 
 		private void SaveOverJsonFile(object sender, EventArgs e)
@@ -97,7 +126,7 @@ namespace JsonleniumTool
 			{
 				dialog.InitialDirectory = Path.GetDirectoryName(_readedFilePath);
 				dialog.FileName = Path.GetFileName(_readedFilePath);
-				dialog.Filter = "JSONファイル(*.json)|*.json";
+				dialog.Filter = "JSONファイル(*.json)|*.json|すべてのファイル(*.*)|*.*";
 				dialog.AddExtension = true;
 				if (dialog.ShowDialog() == DialogResult.OK)
 				{
@@ -148,7 +177,7 @@ namespace JsonleniumTool
 			{
 				sw.WriteLine("■基本情報定義一覧");
 				csv.Configuration.RegisterClassMap<JsonleniumCsvMap>();
-				csv.WriteHeader<JsonleniumEntity>();
+				csv.WriteHeader<TestInfoEntity>();
 				csv.WriteRecord(entity);
 			}
 			using (var sw = new StreamWriter(filePath, true, Encoding.GetEncoding(932)))
@@ -179,9 +208,9 @@ namespace JsonleniumTool
 			MessageBox.Show("出力完了しました。", "出力完了", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
-		private JsonleniumEntity CreateJsonleniumEntity()
+		private TestInfoEntity CreateJsonleniumEntity()
 		{
-			var entity = new JsonleniumEntity()
+			var entity = new TestInfoEntity()
 			{
 				Url = new Uri(new Uri(_urlDomain.Text), _url.Text).ToString(),
 				Banki = _isBanki.Checked,
@@ -192,6 +221,8 @@ namespace JsonleniumTool
 
 			return entity;
 		}
+
+
 	}
 }
 	

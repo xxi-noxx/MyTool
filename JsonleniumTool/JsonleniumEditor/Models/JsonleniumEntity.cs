@@ -5,10 +5,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JsonleniumTool.Models
+namespace JsonleniumEditor.Models
 {
-	
+
 	public class JsonleniumEntity
+	{
+		[JsonProperty("name")]
+		public string Name { get; set; }
+		[JsonProperty("testinfo")]
+		public List<TestInfoEntity> TestInfoList { get; set; }
+
+		public JsonleniumEntity()
+		{
+			TestInfoList = new List<TestInfoEntity>();
+		}
+	}
+	
+	public class TestInfoEntity
 	{
 		[JsonProperty("testcase", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
 		public List<TestCaseEntity> TestCaseList { get; set; }
@@ -20,13 +33,8 @@ namespace JsonleniumTool.Models
 		public string Url { get; set; }
 		[JsonProperty("banki")]
 		public bool Banki { get; set; }
-
-		public JsonleniumEntity()
-		{
-			TestCaseList = new List<TestCaseEntity>();
-			CatalystList = new List<CatalystEntity>();
-			MetaList = new List<MetaEntity>();
-		}
+		[JsonProperty("name")]
+		public string Name { get; set; }
 	}
 
 	public class BaseChildEntity

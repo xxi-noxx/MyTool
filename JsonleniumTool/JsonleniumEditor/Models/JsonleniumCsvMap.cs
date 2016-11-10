@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JsonleniumTool.Models
+namespace JsonleniumEditor.Models
 {
-	public class JsonleniumCsvMap : CsvClassMap<JsonleniumEntity>
+	public class JsonleniumCsvMap : CsvClassMap<TestInfoEntity>
 	{
 		public JsonleniumCsvMap()
 		{
