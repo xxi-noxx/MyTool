@@ -7,13 +7,18 @@ using System.Threading.Tasks;
 
 namespace JsonleniumEditor.Models
 {
-	public class JsonleniumCsvMap : CsvClassMap<TestInfoEntity>
+	public class JsonleniumCsvMap : CsvClassMap<JsonleniumEntity>
 	{
 		public JsonleniumCsvMap()
 		{
-			//References<TestCaseCsvMap>(x => x.TestCaseList);
-			//References<CatalystCsvMap>(x => x.CatalystList);
-			//References<MetaCsvMap>(x => x.MetaList);
+			Map(x => x.Name);
+		}
+	}
+
+	public class TestInfoCsvMap : CsvClassMap<TestInfoEntity>
+	{
+		public TestInfoCsvMap()
+		{
 			Map(x => x.Banki);
 			Map(x => x.Url);
 		}
@@ -23,7 +28,7 @@ namespace JsonleniumEditor.Models
 	{
 		public TestCaseCsvMap()
 		{
-			Map(x => x.Name).Default("hoge");
+			Map(x => x.Name);
 			Map(x => x.Selector);
 			Map(x => x.Attribute);
 			Map(x => x.Expect);

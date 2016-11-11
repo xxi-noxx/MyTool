@@ -23,18 +23,27 @@ namespace JsonleniumEditor.Models
 	
 	public class TestInfoEntity
 	{
+		[JsonProperty("name")]
+		public string Name { get; set; } = "";
+		[JsonProperty("url")]
+		public string Url { get; set; } = "";
+		[JsonProperty("banki")]
+		public bool Banki { get; set; } = false;
+		
 		[JsonProperty("testcase", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
 		public List<TestCaseEntity> TestCaseList { get; set; }
 		[JsonProperty("catalyst", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
 		public List<CatalystEntity> CatalystList { get; set; }
 		[JsonProperty("meta", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
 		public List<MetaEntity> MetaList { get; set; }
-		[JsonProperty("url")]
-		public string Url { get; set; }
-		[JsonProperty("banki")]
-		public bool Banki { get; set; }
-		[JsonProperty("name")]
-		public string Name { get; set; }
+		
+
+		public TestInfoEntity()
+		{
+			TestCaseList = new List<TestCaseEntity>();
+			CatalystList = new List<CatalystEntity>();
+			MetaList = new List<MetaEntity>();
+		}
 	}
 
 	public class BaseChildEntity
@@ -45,12 +54,13 @@ namespace JsonleniumEditor.Models
 
 	public class TestCaseEntity : BaseChildEntity
 	{
+		[JsonProperty("name", DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate)]
+		public string Name { get; set; }
 		[JsonProperty("selector")]
 		public string Selector { get; set; }
 		[JsonProperty("attribute", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
 		public string Attribute { get; set; }
-		[JsonProperty("name", DefaultValueHandling =DefaultValueHandling.IgnoreAndPopulate)]
-		public string Name { get; set; }
+		
 	}
 
 	public class CatalystEntity :BaseChildEntity
