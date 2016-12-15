@@ -16,7 +16,16 @@ namespace JsonleniumEditor
 		{
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
-			Application.Run(new JsonleniumEditor());
+			try
+			{
+				Application.Run(new JsonleniumEditor());
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.ToString());
+				MessageBox.Show("例外発生\r\n" + ex.Message, ex.GetType().ToString(), MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			
 		}
 	}
 }

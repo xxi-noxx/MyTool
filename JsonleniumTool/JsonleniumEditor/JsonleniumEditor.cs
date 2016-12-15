@@ -16,6 +16,8 @@ using System.Windows.Forms;
 
 namespace JsonleniumEditor
 {
+	// TODO : DataGridViewのErrorProvider表示
+	// TODO : ExceptionHandler
 	public partial class JsonleniumEditor : Form
 	{
 		public JsonleniumEditor()
@@ -27,20 +29,33 @@ namespace JsonleniumEditor
 		private string _readedFilePath { get; set; }
 		private JsonleniumEntity _readedJson { get; set; }
 		private TestInfoEntity _selectedTestInfo { get; set; }
+		private const string _dialogFilterJson = "JSONファイル(*.json)|*.json|すべてのファイル(*.*)|*.*";
+		private enum _areaUnit
+		{
+			All = 0,
+			TestInfoName =1,
+			TestInfo = 2,
+		}
 
 		private void LoadForm(object sender, EventArgs e)
 		{
-			
+			// Initialize
 			_urlDomain.DataSource = Settings.Default.UrlDomainList;
 			_jsonFilePath.Text = Settings.Default.LastReadJsonFile;
-		}
+			SetEnableArea(_areaUnit.All, false);
+        }
 
-
+		/// <summary>
+		/// jsonファイルの新規作成Event
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
 		private void CreateNewFile(object sender, EventArgs e)
 		{
-			using (var dialog = new SaveFileDialog())
+			using (var dialog = new SaveFileDialog() { Filter = _dialogFilterJson })
 			{
-				dialog.Filter = "JSONファイル(*.json)|*.json|すべてのファイル(*.*)|*.*";
+				if (!string.IsNullOrEmpty(_jsonFilePath.Text))
+					dialog.InitialDirectory = Path.GetDirectoryName(_jsonFilePath.Text);
 				if (dialog.ShowDialog() == DialogResult.OK)
 				{
 					File.Create(dialog.FileName).Close();
@@ -50,12 +65,15 @@ namespace JsonleniumEditor
 			}
 		}
 
+		/// <summary>
+		/// jsonファイル選択Event
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
 		private void OpenJsonFile(object sender, EventArgs e)
 		{
-			using (var dialog = new OpenFileDialog())
+			using (var dialog = new OpenFileDialog() { Filter = _dialogFilterJson })
 			{
-				dialog.Filter += "JSONファイル(*.json)|*.json|すべてのファイル(*.*)|*.*";
-				
 				if (!string.IsNullOrEmpty(_jsonFilePath.Text))
 					dialog.InitialDirectory =  Path.GetDirectoryName(_jsonFilePath.Text);
 				if (dialog.ShowDialog() == DialogResult.OK)
@@ -66,6 +84,11 @@ namespace JsonleniumEditor
 			}
 		}
 
+		/// <summary>
+		/// jsonファイル読込みEvent
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
 		private void ReadJsonFile(object sender, EventArgs e)
 		{
 			if (!File.Exists(_jsonFilePath.Text))
@@ -79,10 +102,43 @@ namespace JsonleniumEditor
 			Settings.Default.LastReadJsonFile = _readedFilePath;
 			Settings.Default.Save();
 
-			// TODO : JSONからEntity作成
+			TestInfoClear();
 			_readedJson = JsonConvert.DeserializeObject<JsonleniumEntity>(File.ReadAllText(_readedFilePath, Encoding.GetEncoding(932))) ?? new JsonleniumEntity();
 			_readedJson.Name = Path.GetFileNameWithoutExtension(_readedFilePath);
 			_testInfoList.DataSource = new BindingSource(_readedJson.TestInfoList?.Select(x => x.Name).ToList() ?? new List<string>(), "");
+			SetEnableArea(_areaUnit.TestInfoName, true);
+
+		}
+
+		private void TestInfoClear()
+		{
+			_selectedTestInfo = null;
+			_testCaseData.DataSource = null;
+			_catalystData.DataSource = null;
+			_metaData.DataSource = null;
+			_urlDomain.Text = "";
+			_url.Text = "";
+			_isBanki.Checked = false;
+			SetEnableArea(_areaUnit.TestInfoName, false);
+		}
+
+		private void SetEnableArea(_areaUnit area, bool isEnable)
+		{
+			
+			if (area <= _areaUnit.TestInfoName)
+			{
+				_testInfoList.Enabled = isEnable;
+				_newTestInfoName.Enabled = isEnable;
+				_addNewTestInfo.Enabled = isEnable;
+				_outputCsv.Enabled = isEnable;
+				_saveOverWrite.Enabled = isEnable;
+				_saveAsName.Enabled = isEnable;
+			}
+			if (area <= _areaUnit.TestInfo)
+			{
+				_testInfoPanel.Enabled = isEnable;
+				_isBanki.Enabled = isEnable;
+			}
 		}
 
 		private void AddNewTestInfo(object sender, EventArgs e)
@@ -108,11 +164,12 @@ namespace JsonleniumEditor
 		private void TestInfoChange(object sender, EventArgs e)
 		{
 			// TestInfo変更前に入力されているUrlDomainをUserSettingsに保存
-			if (!Settings.Default.UrlDomainList.Contains(_urlDomain.Text))
+			if (_selectedTestInfo != null && !Settings.Default.UrlDomainList.Contains(_urlDomain.Text))
 			{
 				Settings.Default.UrlDomainList.Add(_urlDomain.Text);
 				Settings.Default.Save();
 			}
+			
 
 			_selectedTestInfo = _readedJson.TestInfoList.Single(x => x.Name == _testInfoList.SelectedItem.ToString());
 			_testCaseData.DataSource = new BindingSource(_selectedTestInfo.TestCaseList ?? new List<TestCaseEntity>(), "");
@@ -124,7 +181,14 @@ namespace JsonleniumEditor
 				_urlDomain.Text = string.Format("{0}://{1}", uri.Scheme, uri.Host);
 				_url.Text = uri.Path + uri.Query;
 			}
+			else
+			{
+				_urlDomain.Text = "";
+				_url.Text = "";
+			}
 			_isBanki.Checked = _selectedTestInfo.Banki;
+
+			SetEnableArea(_areaUnit.TestInfo, true);
 		}
 
 		private void SaveOverJsonFile(object sender, EventArgs e)
@@ -150,6 +214,9 @@ namespace JsonleniumEditor
 
 		private void SaveJsonFileCore(string path)
 		{
+			_selectedTestInfo.Url = new Uri(new Uri(_urlDomain.Text), _url.Text).ToString();
+			_selectedTestInfo.Banki = _isBanki.Checked;
+
 			// TODO : EntityからFile作成
 			var entity = _readedJson;
 			foreach (var testInfo in entity.TestInfoList)
@@ -214,13 +281,13 @@ namespace JsonleniumEditor
 					sw.WriteLine();
 					sw.WriteLine("### testcase定義一覧");
 					csv.Configuration.RegisterClassMap<TestCaseCsvMap>();
-					csv.WriteRecords(testInfo.TestCaseList);
+					csv.WriteRecords(testInfo.TestCaseList ?? Enumerable.Empty<TestCaseEntity>());
 				}
 				using (var sw = new StreamWriter(filePath, true, sjinEncode))
 				using (var csv = new CsvWriter(sw))
 				{
 					sw.WriteLine();
-					sw.WriteLine("### testcase定義一覧");
+					sw.WriteLine("### catalyst定義一覧");
 					csv.Configuration.RegisterClassMap<CatalystCsvMap>();
 					csv.WriteRecords(testInfo.CatalystList ?? Enumerable.Empty<CatalystEntity>());
 				}
@@ -228,15 +295,27 @@ namespace JsonleniumEditor
 				using (var csv = new CsvWriter(sw))
 				{
 					sw.WriteLine();
-					sw.WriteLine("### testcase定義一覧");
+					sw.WriteLine("### meta定義一覧");
 					csv.Configuration.RegisterClassMap<MetaCsvMap>();
 					csv.WriteRecords(testInfo.MetaList ?? Enumerable.Empty<MetaEntity>());
 				}
-
 			}
-			
-
 			MessageBox.Show("出力完了しました。", "出力完了", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+
+		private void BankiChanged(object sender, EventArgs e)
+		{
+			_selectedTestInfo.Banki = _isBanki.Checked;
+		}
+
+		private void ValidatingTestCaseRow(object sender, DataGridViewCellCancelEventArgs e)
+		{
+			//var currentRowItem = ((TestCaseEntity)_testCaseData.CurrentRow.DataBoundItem);
+			//if (string.IsNullOrEmpty(currentRowItem.Selector) || string.IsNullOrEmpty(currentRowItem.Expect))
+			//{
+				
+			//	//_errorProvider.SetError(_testCaseData.CurrentRow.HeaderCell, "必須項目が未入力です。");
+			//}
 		}
 	}
 }
